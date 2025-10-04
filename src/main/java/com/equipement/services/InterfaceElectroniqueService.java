@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -18,6 +19,18 @@ public class InterfaceElectroniqueService {
 
     @Autowired
     private CompteRepository compteRepository;
+
+    // Méthode pour récupérer toutes les interfaces
+    public List<InterfaceElectronique> getAllInterfaces() {
+        return interfaceElectroniqueRepository.findAll();
+    }
+
+    // Méthode pour récupérer une interface par ID
+    public InterfaceElectronique getInterfaceById(Long idInterface) {
+        Objects.requireNonNull(idInterface, "L'ID de l'interface ne peut pas être null");
+        return interfaceElectroniqueRepository.findById(idInterface)
+                .orElseThrow(() -> new RuntimeException("Interface non trouvée avec l'ID: " + idInterface));
+    }
 
     // Méthode pour créer une interface électronique
     public void creer(InterfaceElectronique interfaceElectronique, Long idCompte) {

@@ -5,6 +5,7 @@ import com.equipement.Repository.CableRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -12,6 +13,18 @@ public class CableService {
 
     @Autowired
     private CableRepository cableRepository;
+
+    // Méthode pour récupérer tous les câbles
+    public List<Cable> getAllCables() {
+        return cableRepository.findAll();
+    }
+
+    // Méthode pour récupérer un câble par ID
+    public Cable getCableById(Long idCable) {
+        Objects.requireNonNull(idCable, "L'ID du câble ne peut pas être null");
+        return cableRepository.findById(idCable)
+                .orElseThrow(() -> new RuntimeException("Câble non trouvé avec l'ID: " + idCable));
+    }
 
     // Méthode pour ajouter un câble
     public void ajouterCable(Cable cable) {
@@ -28,6 +41,26 @@ public class CableService {
     }
 
     // Méthode pour modifier un câble
+    public void modifierCable(Cable cable) {
+        Objects.requireNonNull(cable, "Le câble ne peut pas être null");
+        Objects.requireNonNull(cable.getIdCable(), "L'ID du câble ne peut pas être null");
+        Objects.requireNonNull(cable.getNumSerie(), "Le numéro de série ne peut pas être null");
+
+        // Vérifier que le câble existe
+        if (!cableRepository.existsById(cable.getIdCable())) {
+            throw new RuntimeException("Câble non trouvé avec l'ID: " + cable.getIdCable());
+        }
+
+        // Valider le numéro de série
+        if (cable.getNumSerie().trim().isEmpty()) {
+            throw new RuntimeException("Le numéro de série ne peut pas être vide");
+        }
+
+        // Sauvegarder les modifications
+        cableRepository.save(cable);
+    }
+
+    // Méthode pour modifier un câble (ancienne version - gardée pour compatibilité)
     public void modifierCable(Long idCable, String nouveauNumSerie, boolean nouvelEtat) {
         Objects.requireNonNull(idCable, "L'ID du câble ne peut pas être null");
         Objects.requireNonNull(nouveauNumSerie, "Le nouveau numéro de série ne peut pas être null");
