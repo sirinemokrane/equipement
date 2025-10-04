@@ -2,7 +2,9 @@ package com.equipement.controller;
 
 import com.equipement.entity.Compte;
 import com.equipement.entity.TypeCompte;
+import com.equipement.dto.CompteDTO;
 import com.equipement.services.CompteService;
+import com.equipement.services.StructureService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,35 +15,59 @@ import java.util.List;
 @RequestMapping("/api/comptes")
 public class CompteController {
 
-    @Autowired
-    private CompteService compteService;
+    private final CompteService compteService;
+
+    private final StructureService structureService;
+
+    public CompteController(CompteService compteService, StructureService structureService) {
+        this.compteService = compteService;
+        this.structureService = structureService;
+    }
 
     @GetMapping
-    public ResponseEntity<List<Compte>> getAllComptes() {
+    public ResponseEntity<List<CompteDTO>> getAllComptes() {
         List<Compte> comptes = compteService.getAllComptes();
-        return ResponseEntity.ok(comptes);
+        List<CompteDTO> dtos = comptes.stream().map(this::toDTO).toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Compte> getCompteById(@PathVariable Long id) {
+    public ResponseEntity<CompteDTO> getCompteById(@PathVariable Long id) {
         Compte compte = compteService.getCompteById(id);
         if (compte == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(compte);
+        return ResponseEntity.ok(toDTO(compte));
     }
 
     @PostMapping
-    public ResponseEntity<Compte> createCompte(@RequestBody Compte compte) {
+    public ResponseEntity<CompteDTO> createCompte(@RequestBody CompteDTO dto) {
+        Compte compte = new Compte();
+        compte.setNom(dto.getNom());
+        compte.setEmail(dto.getEmail());
+        compte.setTypeCompte(dto.getTypeCompte());
+        compte.setDateCreation(dto.getDateCreation());
+        // if structure id provided, fetch and set
+        if (dto.getIdStructure() != null) {
+            compte.setStructure(structureService.getStructureById(dto.getIdStructure()));
+        }
         Compte nouveauCompte = compteService.saveCompte(compte);
-        return ResponseEntity.ok(nouveauCompte);
+        return ResponseEntity.ok(toDTO(nouveauCompte));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Compte> updateCompte(@PathVariable Long id, @RequestBody Compte compte) {
+    public ResponseEntity<CompteDTO> updateCompte(@PathVariable Long id, @RequestBody CompteDTO dto) {
+        Compte compte = new Compte();
         compte.setIdCompte(id);
+        compte.setNom(dto.getNom());
+        compte.setEmail(dto.getEmail());
+        compte.setTypeCompte(dto.getTypeCompte());
+        compte.setDateCreation(dto.getDateCreation());
+        if (dto.getIdStructure() != null) {
+            compte.setStructure(structureService.getStructureById(dto.getIdStructure()));
+        }
         Compte compteMisAJour = compteService.saveCompte(compte);
-        return ResponseEntity.ok(compteMisAJour);
+        return ResponseEntity.ok(toDTO(compteMisAJour));
     }
 
     @DeleteMapping("/{id}")
@@ -51,9 +77,10 @@ public class CompteController {
     }
 
     @GetMapping("/structure/{idStructure}")
-    public ResponseEntity<List<Compte>> getComptesByStructure(@PathVariable Long idStructure) {
+    public ResponseEntity<List<CompteDTO>> getComptesByStructure(@PathVariable Long idStructure) {
         List<Compte> comptes = compteService.getComptesByStructure(idStructure);
-        return ResponseEntity.ok(comptes);
+        List<CompteDTO> dtos = comptes.stream().map(this::toDTO).toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @PostMapping("/{id}/changer-mot-de-passe")
@@ -78,5 +105,22 @@ public class CompteController {
     public ResponseEntity<TypeCompte> obtenirRole(@PathVariable Long id) {
         TypeCompte role = compteService.obtenirRole(id);
         return ResponseEntity.ok(role);
+    }
+
+    // --- Mapping utility ---
+    private CompteDTO toDTO(Compte compte) {
+        if (compte == null) return null;
+        Long idStructure = null;
+        if (compte.getStructure() != null) {
+            idStructure = compte.getStructure().getIdStructure();
+        }
+        return new CompteDTO(
+                compte.getIdCompte(),
+                compte.getNom(),
+                compte.getEmail(),
+                compte.getTypeCompte(),
+                compte.getDateCreation(),
+                idStructure
+        );
     }
 }

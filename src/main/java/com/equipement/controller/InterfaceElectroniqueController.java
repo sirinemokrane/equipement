@@ -2,6 +2,7 @@ package com.equipement.controller;
 
 import com.equipement.entity.InterfaceElectronique;
 import com.equipement.services.InterfaceElectroniqueService;
+import com.equipement.dto.InterfaceElectroniqueDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -33,10 +34,27 @@ public class InterfaceElectroniqueController {
 
     @PostMapping
     public ResponseEntity<String> creerInterface(
-            @RequestBody InterfaceElectronique interfaceElectronique,
-            @RequestParam Long idCompte) {
-        interfaceElectroniqueService.creer(interfaceElectronique, idCompte);
-        return ResponseEntity.ok("Interface électronique créée avec succès");
+            @RequestBody InterfaceElectroniqueDTO dto,
+            @RequestParam(name = "idCompte", required = false) Long idCompteParam) {
+        // Map DTO -> entity
+        InterfaceElectronique entity = new InterfaceElectronique();
+        entity.setNom(dto.getNom());
+        entity.setObservations(dto.getObservations());
+
+        // Supporter idCompte soit dans le DTO soit en paramètre de requête (rétrocompatibilité)
+        Long idCompte = dto.getIdCompte() != null ? dto.getIdCompte() : idCompteParam;
+        if (idCompte == null) {
+            return ResponseEntity.badRequest().body("Le paramètre idCompte est requis (dans le body ou en query param)");
+        }
+
+        try {
+            // la dateCreation est définie dans le service
+            interfaceElectroniqueService.creer(entity, idCompte);
+            return ResponseEntity.ok("Interface électronique créée avec succès");
+        } catch (RuntimeException e) {
+            // Retourner un message lisible au client au lieu d'exception 500
+            return ResponseEntity.badRequest().body("Erreur lors de la création de l'interface: " + e.getMessage());
+        }
     }
 
     @PutMapping("/{idInterface}")

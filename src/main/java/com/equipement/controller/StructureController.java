@@ -2,7 +2,10 @@ package com.equipement.controller;
 
 import com.equipement.entity.Compte;
 import com.equipement.entity.Structure;
+import com.equipement.dto.StructureDTO;
+import com.equipement.dto.CompteDTO;
 import com.equipement.services.StructureService;
+import com.equipement.services.CompteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +18,9 @@ public class StructureController {
 
     @Autowired
     private StructureService structureService;
+
+    @Autowired
+    private CompteService compteService;
 
     @GetMapping
     public ResponseEntity<List<Structure>> getAllStructures() {
@@ -29,14 +35,22 @@ public class StructureController {
     }
 
     @PostMapping
-    public ResponseEntity<Structure> createStructure(@RequestBody Structure structure) {
+    public ResponseEntity<Structure> createStructure(@RequestBody StructureDTO dto) {
+        Structure structure = new Structure();
+        structure.setNom(dto.getNom());
+        structure.setLocalisation(dto.getLocalisation());
+        structure.setTypeStructure(dto.getTypeStructure());
         Structure nouvelleStructure = structureService.saveStructure(structure);
         return ResponseEntity.ok(nouvelleStructure);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Structure> updateStructure(@PathVariable Long id, @RequestBody Structure structure) {
+    public ResponseEntity<Structure> updateStructure(@PathVariable Long id, @RequestBody StructureDTO dto) {
+        Structure structure = new Structure();
         structure.setIdStructure(id);
+        structure.setNom(dto.getNom());
+        structure.setLocalisation(dto.getLocalisation());
+        structure.setTypeStructure(dto.getTypeStructure());
         Structure structureMiseAJour = structureService.saveStructure(structure);
         return ResponseEntity.ok(structureMiseAJour);
     }
@@ -50,7 +64,13 @@ public class StructureController {
     @PostMapping("/{idStructure}/comptes")
     public ResponseEntity<String> ajouterCompte(
             @PathVariable Long idStructure,
-            @RequestBody Compte compte) {
+            @RequestBody CompteDTO dto) {
+        Compte compte = new Compte();
+        compte.setNom(dto.getNom());
+        compte.setEmail(dto.getEmail());
+        compte.setTypeCompte(dto.getTypeCompte());
+        compte.setDateCreation(dto.getDateCreation());
+        // On peut également utiliser compteService.saveCompte si besoin
         structureService.ajouterCompte(idStructure, compte);
         return ResponseEntity.ok("Compte ajouté avec succès à la structure");
     }

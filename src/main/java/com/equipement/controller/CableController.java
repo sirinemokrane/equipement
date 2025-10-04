@@ -2,6 +2,7 @@ package com.equipement.controller;
 
 import com.equipement.entity.Cable;
 import com.equipement.services.CableService;
+import com.equipement.dto.CableDTO;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -32,8 +33,12 @@ public class CableController {
     }
 
     @PostMapping
-    public ResponseEntity<String> ajouterCable(@RequestBody Cable cable) {
+    public ResponseEntity<String> ajouterCable(@RequestBody CableDTO dto) {
         try {
+            Cable cable = new Cable();
+            cable.setNumSerie(dto.getNumSerie());
+            cable.setEtat(dto.isEtat());
+            // fichiers sont gérés séparément via endpoints fichiers-cables
             cableService.ajouterCable(cable);
             return ResponseEntity.ok("Câble ajouté avec succès");
         } catch (Exception e) {
@@ -44,9 +49,12 @@ public class CableController {
     @PutMapping("/{idCable}")
     public ResponseEntity<String> modifierCable(
             @PathVariable Long idCable,
-            @RequestBody Cable cable) {
+            @RequestBody CableDTO dto) {
         try {
+            Cable cable = new Cable();
             cable.setIdCable(idCable);
+            cable.setNumSerie(dto.getNumSerie());
+            cable.setEtat(dto.isEtat());
             cableService.modifierCable(cable);
             return ResponseEntity.ok("Câble modifié avec succès");
         } catch (Exception e) {
