@@ -8,6 +8,17 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.LinkedHashMap;
 
 @RestController
 @RequestMapping("/api/cables")
@@ -16,10 +27,23 @@ public class CableController {
     @Autowired
     private CableService cableService;
 
+    @Autowired
+    private com.equipement.batch.CsvCableImporter csvCableImporter;
+
     @GetMapping
     public ResponseEntity<List<Cable>> getAllCables() {
         List<Cable> cables = cableService.getAllCables();
         return ResponseEntity.ok(cables);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<?> importCsv(@RequestParam(name = "clear", required = false, defaultValue = "false") boolean clear) {
+        try {
+            java.util.List<com.equipement.entity.Cable> saved = csvCableImporter.importAndSave(clear);
+            return ResponseEntity.ok(java.util.Map.of("imported", saved.size()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Import failed: " + e.getMessage());
+        }
     }
 
     @GetMapping("/{idCable}")
@@ -113,5 +137,71 @@ public class CableController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body("Erreur lors de la suppression du câble: " + e.getMessage());
         }
+    }
+
+    /**
+     * Return first N lines of the CSV file used by the batch. Query param 'lines' optional (default 200).
+     */
+    @GetMapping("/file")
+    public ResponseEntity<?> getFilePreview(@RequestParam(name = "lines", required = false) Integer lines) {
+        int n = (lines == null || lines <= 0) ? 200 : lines;
+        String path = "src/main/resources/data/equipement";
+        try (Stream<String> stream = Files.lines(Paths.get(path))) {
+            List<String> result = stream.limit(n).collect(Collectors.toList());
+            return ResponseEntity.ok(result);
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Failed to read file: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Return parsed CSV rows as a list of objects (header -> value).
+     * This reads the classpath resource `/data/equipement` and handles the "outer-quote + doubled-quote" format.
+     */
+    @GetMapping("/file-parsed")
+    public ResponseEntity<?> getFileParsed() {
+        try (InputStream is = getClass().getResourceAsStream("/data/equipement")) {
+            if (is == null) return ResponseEntity.status(500).body("Resource data/equipement not found");
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
+                String headerLine = br.readLine();
+                if (headerLine == null) return ResponseEntity.ok(java.util.List.of());
+                String[] headers = preprocessLine(headerLine).split(",", -1);
+                for (int i = 0; i < headers.length; i++) headers[i] = normalizeToken(headers[i]);
+                java.util.List<Map<String, String>> rows = new ArrayList<>();
+                String raw;
+                while ((raw = br.readLine()) != null) {
+                    String[] parts = preprocessLine(raw).split(",", -1);
+                    Map<String, String> obj = new LinkedHashMap<>();
+                    for (int i = 0; i < headers.length; i++) {
+                        String v = (i < parts.length) ? normalizeToken(parts[i]) : null;
+                        obj.put(headers[i], v);
+                    }
+                    rows.add(obj);
+                }
+                return ResponseEntity.ok(rows);
+            }
+        } catch (IOException e) {
+            return ResponseEntity.status(500).body("Failed to read/parse file: " + e.getMessage());
+        }
+    }
+
+    private String preprocessLine(String raw) {
+        if (raw == null) return "";
+        String line = raw.trim();
+        if (line.length() >= 2 && line.startsWith("\"") && line.endsWith("\"")) {
+            line = line.substring(1, line.length() - 1);
+        }
+        // unescape doubled quotes
+        line = line.replace("\"\"", "\"");
+        return line;
+    }
+
+    private String normalizeToken(String s) {
+        if (s == null) return null;
+        String t = s.trim();
+        if (t.isEmpty()) return null;
+        if (t.length() >= 2 && t.startsWith("\"") && t.endsWith("\"")) t = t.substring(1, t.length() - 1);
+        t = t.trim();
+        return t.isEmpty() ? null : t;
     }
 }
