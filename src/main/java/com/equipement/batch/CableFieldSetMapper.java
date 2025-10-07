@@ -8,13 +8,18 @@ import org.springframework.validation.BindException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-
+// Cette classe implémente FieldSetMapper<Cable> pour mapper les données d'un fichier plat vers un objet Cable.
+// Méthode principale de l'interface FieldSetMapper.
+// Elle prend en entrée un FieldSet (ensemble de champs lus depuis un fichier) et retourne un objet Cable.
 public class CableFieldSetMapper implements FieldSetMapper<Cable> {
 
-    @Override
+    @Override // Cette méthode est responsable de la transformation des données brutes lues depuis un fichier plat (CSV, TXT, etc.)
+ // en un objet métier {@link Cable} utilisable par le processus Spring Batch.
+
     public Cable mapFieldSet(FieldSet fieldSet) throws BindException {
         Cable cable = new Cable();
-
+// Mapping des champs du FieldSet vers les attributs de l'objet Cable.
+        // Chaque méthode readXxx lit et convertit le champ correspondant
         try {
             // Mapping des champs
             cable.setType(readString(fieldSet, "type"));
@@ -59,7 +64,8 @@ public class CableFieldSetMapper implements FieldSetMapper<Cable> {
             return null;
         }
     }
-
+    // Méthode utilitaire pour lire un champ de type Integer.
+    // Retourne null si le champ est vide ou invalide.
     private Integer readInteger(FieldSet fs, String name) {
         try {
             String value = fs.readString(name);

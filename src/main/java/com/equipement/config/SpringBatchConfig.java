@@ -1,3 +1,4 @@
+// Cette classe est le cœur du traitement batch : elle dit à Spring comment lire, transformer et écrire les données.
 package com.equipement.config;
 
 import com.equipement.Repository.CableRepository;
@@ -24,14 +25,20 @@ import java.util.List;
 @Configuration
 public class SpringBatchConfig {
 
-    private final JobRepository jobRepository;
-    private final PlatformTransactionManager transactionManager;
+    private final JobRepository jobRepository; // gère l’état et l’historique des jobs (par ex. combien d’enregistrements ont été lus, si le job a échoué, etc.).
+    private final PlatformTransactionManager transactionManager; // gère les transactions (commits et rollbacks) pour garantir la cohérence des données.
 
     public SpringBatchConfig(JobRepository jobRepository,
                              PlatformTransactionManager transactionManager) {
         this.jobRepository = jobRepository;
         this.transactionManager = transactionManager;
     }
+
+
+    // “Spring, crée-moi un objet CableWriter une fois pour tout le programme, et garde-le en mémoire pour le job batch.”
+    //
+    //Donc oui, déclarer un bean, c’est comme créer un objet,
+    //mais en demandant à Spring de le faire et de le gérer à ta place.
 
     @Bean
     public FlatFileItemReader<Cable> cableReader() {
@@ -71,6 +78,8 @@ public class SpringBatchConfig {
                 .build();
     }
 
+
+
     @Bean
     public CableProcessor cableProcessor() {
         return new CableProcessor();
@@ -88,7 +97,7 @@ public class SpringBatchConfig {
                 .reader(cableReader())
                 .processor(cableProcessor())
                 .writer(cableWriter)
-                .faultTolerant()
+                .faultTolerant()// permet de gérer les erreurs sans tout arrêter.
                 .skip(Exception.class)
                 .skipLimit(10) // Maximum 10 erreurs tolérées
                 .build();
