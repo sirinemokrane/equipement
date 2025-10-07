@@ -1,5 +1,5 @@
 -- Script SQL COMPLET : Nettoyage + Insertion des données de test
--- Base de données : equipement (PostgreSQL)
+-- Base de données : equipementt (PostgreSQL)
 -- Date : 2025-10-04
 
 \echo 'Début du script de peuplement de la base de données...'

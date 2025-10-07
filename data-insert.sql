@@ -1,4 +1,4 @@
--- Script SQL pour enrichir la base de données equipement
+-- Script SQL pour enrichir la base de données equipementt
 -- Ordre d'insertion respectant les contraintes de clés étrangères
 
 -- =============================================================================
@@ -97,3 +97,7 @@ FROM compte c
 LEFT JOIN interface_electronique i ON c.id_compte = i.id_compte
 GROUP BY c.id_compte, c.nom, c.type_compte
 ORDER BY c.id_compte;
+
+
+
+commit ;

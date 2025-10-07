@@ -145,7 +145,7 @@ public class CableController {
     @GetMapping("/file")
     public ResponseEntity<?> getFilePreview(@RequestParam(name = "lines", required = false) Integer lines) {
         int n = (lines == null || lines <= 0) ? 200 : lines;
-        String path = "src/main/resources/data/equipement";
+        String path = "src/main/resources/data/equipementt";
         try (Stream<String> stream = Files.lines(Paths.get(path))) {
             List<String> result = stream.limit(n).collect(Collectors.toList());
             return ResponseEntity.ok(result);
@@ -156,12 +156,12 @@ public class CableController {
 
     /**
      * Return parsed CSV rows as a list of objects (header -> value).
-     * This reads the classpath resource `/data/equipement` and handles the "outer-quote + doubled-quote" format.
+     * This reads the classpath resource `/data/equipementt` and handles the "outer-quote + doubled-quote" format.
      */
     @GetMapping("/file-parsed")
     public ResponseEntity<?> getFileParsed() {
-        try (InputStream is = getClass().getResourceAsStream("/data/equipement")) {
-            if (is == null) return ResponseEntity.status(500).body("Resource data/equipement not found");
+        try (InputStream is = getClass().getResourceAsStream("/data/equipementt")) {
+            if (is == null) return ResponseEntity.status(500).body("Resource data/equipementt not found");
             try (BufferedReader br = new BufferedReader(new InputStreamReader(is))) {
                 String headerLine = br.readLine();
                 if (headerLine == null) return ResponseEntity.ok(java.util.List.of());

@@ -35,3 +35,4 @@ UNION ALL
 SELECT 'INTERFACES' as table_name, COUNT(*) as nb_records FROM interface_electronique
 UNION ALL
 SELECT 'FICHIERS' as table_name, COUNT(*) as nb_records FROM fichier;
+commit;
