@@ -1,125 +1,115 @@
 package com.equipement.config;
 
-import com.equipement.batch.DBWriter;
-import com.equipement.batch.Processor;
+import com.equipement.Repository.CableRepository;
+import com.equipement.batch.CableFieldSetMapper;
+import com.equipement.batch.CableProcessor;
+import com.equipement.batch.CableWriter;
+import com.equipement.batch.DynamicReaderListener;  // NOUVEAU : Import du listener
 import com.equipement.entity.Cable;
 import org.springframework.batch.core.Job;
 import org.springframework.batch.core.Step;
-import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
+import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
-import org.springframework.batch.item.ItemProcessor;
-import org.springframework.batch.item.file.FlatFileItemReader;
-import org.springframework.batch.item.file.LineMapper;
-import org.springframework.lang.NonNull;
 import org.springframework.batch.core.repository.JobRepository;
-import org.springframework.transaction.PlatformTransactionManager;
-import com.equipement.Repository.CableRepository;
+import org.springframework.batch.core.step.builder.StepBuilder;
+import org.springframework.batch.item.file.FlatFileItemReader;
+import org.springframework.batch.item.file.builder.FlatFileItemReaderBuilder;
+import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
+import org.springframework.beans.factory.annotation.Autowired;  // AJOUTÉ : Pour injecter le listener
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
-import java.util.ArrayList;
+import org.springframework.core.io.FileSystemResource;  // Utilisé par le listener
+import org.springframework.transaction.PlatformTransactionManager;
+
 import java.util.List;
 
 @Configuration
-@EnableBatchProcessing
+// @EnableBatchProcessing est implicite dans Spring Boot, mais tu peux l'ajouter si besoin
 public class SpringBatchConfig {
 
-	private final JobRepository jobRepository;
-	private final PlatformTransactionManager transactionManager;
+    private final JobRepository jobRepository;//  Stocke l’état des jobs et des steps (métadonnées).
+    private final PlatformTransactionManager transactionManager;// Gère les transactions pour les opérations en base de données.
 
-	public SpringBatchConfig(JobRepository jobRepository, PlatformTransactionManager transactionManager) {
-		this.jobRepository = jobRepository;
-		this.transactionManager = transactionManager;
-	}
+    @Autowired
+    private DynamicReaderListener dynamicReaderListener;  // Injecté pour configurer dynamiquement le reader
 
-	@Bean
-	public FlatFileItemReader<String[]> reader() {
-		FlatFileItemReader<String[]> reader = new FlatFileItemReader<>();
-		reader.setResource(new ClassPathResource("data/equipementt"));
-		reader.setLinesToSkip(1); // Skip header line
+    public SpringBatchConfig(JobRepository jobRepository,
+                             PlatformTransactionManager transactionManager) {
+        this.jobRepository = jobRepository;
+        this.transactionManager = transactionManager;
+    }
 
-		reader.setLineMapper(new LineMapper<String[]>() {
-			@Override
-			public @NonNull String[] mapLine(@NonNull String line, int lineNum) throws Exception {
-				System.out.println("[v0] RAW LINE " + lineNum + ": " + line);
-				
-				if (line == null || line.trim().isEmpty()) {
-					return new String[0];
-				}
-				
-				String l = line.trim();
-				if (l.length() >= 2 && l.startsWith("\"") && l.endsWith("\"")) {
-					l = l.substring(1, l.length() - 1);
-				}
-				
-				System.out.println("[v0] AFTER REMOVING OUTER QUOTES: " + l);
-				
-				List<String> tokens = new ArrayList<>();
-				StringBuilder current = new StringBuilder();
-				boolean inQuotes = false;
-				
-				for (int i = 0; i < l.length(); i++) {
-					char c = l.charAt(i);
-					
-					if (c == '"') {
-						// Check for doubled quotes ""
-						if (i + 1 < l.length() && l.charAt(i + 1) == '"') {
-							current.append('"');
-							i++; // Skip next quote
-						} else {
-							// Toggle quote state
-							inQuotes = !inQuotes;
-						}
-					} else if (c == ',' && !inQuotes) {
-						// Field separator outside quotes
-						String field = current.toString().trim();
-						tokens.add(field);
-						current = new StringBuilder();
-					} else {
-						current.append(c);
-					}
-				}
-				// Add last field
-				String field = current.toString().trim();
-				tokens.add(field);
-				
-				String[] result = tokens.toArray(new String[0]);
-				System.out.println("[v0] PARSED " + result.length + " FIELDS:");
-				for (int i = 0; i < result.length; i++) {
-					System.out.println("[v0]   [" + i + "] = '" + result[i] + "'");
-				}
-				
-				return result;
-			}
-		});
-		return reader;
-	}
+    // MODIFIÉ : Reader simple (sans @Value ni @StepScope). Resource sera set par le listener
+    @Bean
+    public FlatFileItemReader<Cable> cableReader() {
+        // Tokenizer personnalisé (INCHANGÉ : ta logique pour guillemets)
+        DelimitedLineTokenizer tokenizer = new DelimitedLineTokenizer() {
+            @Override
+            protected List<String> doTokenize(String line) {
+                String cleanLine = line.trim();
+                if (cleanLine.startsWith("\"") && cleanLine.endsWith("\"")) {
+                    cleanLine = cleanLine.substring(1, cleanLine.length() - 1);
+                }
+                cleanLine = cleanLine.replace("\"\"", "\"");
+                return List.of(super.doTokenize(cleanLine).toArray(new String[0]));
+            }
+        };
 
-	@Bean
-	public ItemProcessor<String[], Cable> processor() {
-		return new Processor();
-	}
+        tokenizer.setDelimiter(",");
+        tokenizer.setQuoteCharacter('"');
+        tokenizer.setNames(
+                "type", "serialNb", "channelNb", "lineName", "pointNb",
+                "state", "autoTest", "easting", "northing", "elevation",
+                "noise", "distortion", "phase", "gain", "version",
+                "lastTestDate", "cxMaster"
+        );
 
-	@Bean
-	public DBWriter dbWriter(CableRepository repository) {
-		return new DBWriter(repository);
-	}
+        FlatFileItemReader<Cable> reader = new FlatFileItemReaderBuilder<Cable>()
+                .name("cableItemReader")
+                .linesToSkip(1) // Skip header
+                .lineTokenizer(tokenizer)
+                .fieldSetMapper(new CableFieldSetMapper())
+                .strict(true)
+                .build();
 
-	@Bean
-	public Step importStep(DBWriter dbWriter) {
-		return new org.springframework.batch.core.step.builder.StepBuilder("importStep", jobRepository)
-			.<String[], Cable>chunk(50, transactionManager)
-			.reader(reader())
-			.processor(processor())
-			.writer(dbWriter)
-			.build();
-	}
+        // Resource initial : Un placeholder (sera overwritten par le listener)
+        // Tu peux set un fichier vide ou null ; le listener le remplacera
+        reader.setResource(new FileSystemResource(""));  // Vide pour l'instant
 
-	@Bean
-	public Job importJob(Step importStep) {
-		return new org.springframework.batch.core.job.builder.JobBuilder("importJob", jobRepository)
-			.incrementer(new RunIdIncrementer())
-			.start(importStep)
-			.build();
-	}
+        return reader;
+    }
+
+    // Les autres beans INCHANGÉS
+    @Bean
+    public CableProcessor cableProcessor() { //Rôle : Traiter chaque objet Cable après sa lecture (validation, transformation, enrichissement, etc.).
+        return new CableProcessor();
+    }
+
+    @Bean
+    public CableWriter cableWriter(CableRepository repository) { // Rôle : Écrire les objets Cable en base de données.
+        return new CableWriter(repository);
+    }
+
+    // MODIFIÉ : Step avec le listener injecté
+    @Bean
+    public Step importCableStep(FlatFileItemReader<Cable> cableReader, CableWriter cableWriter) {
+        return new StepBuilder("importCableStep", jobRepository)
+                .<Cable, Cable>chunk(50, transactionManager)
+                .reader(cableReader)
+                .processor(cableProcessor())
+                .writer(cableWriter)
+                .listener(dynamicReaderListener)  // NOUVEAU : Ajoute le listener pour config dynamique
+                .faultTolerant()
+                .skip(Exception.class)
+                .skipLimit(10)
+                .build();
+    }
+
+    @Bean
+    public Job importCableJob(Step importCableStep) {
+        return new JobBuilder("importCableJob", jobRepository)
+                .incrementer(new RunIdIncrementer())
+                .start(importCableStep)
+                .build();
+    }
 }
