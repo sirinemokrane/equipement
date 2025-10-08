@@ -23,15 +23,30 @@ public class StructureController {
     private CompteService compteService;
 
     @GetMapping
-    public ResponseEntity<List<Structure>> getAllStructures() {
+    public ResponseEntity<List<StructureDTO>> getAllStructures() {
         List<Structure> structures = structureService.getAllStructures();
-        return ResponseEntity.ok(structures);
+        List<StructureDTO> dtos = structures.stream().map(s -> {
+            StructureDTO dto = new StructureDTO();
+            dto.setIdStructure(s.getIdStructure());
+            dto.setNom(s.getNom());
+            dto.setLocalisation(s.getLocalisation());
+            dto.setTypeStructure(s.getTypeStructure());
+            if (s.getComptes() != null) dto.setCompteIds(s.getComptes().stream().map(Compte::getIdCompte).toList());
+            return dto;
+        }).toList();
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Structure> getStructureById(@PathVariable Long id) {
-        Structure structure = structureService.getStructureById(id);
-        return ResponseEntity.ok(structure);
+    public ResponseEntity<StructureDTO> getStructureById(@PathVariable Long id) {
+        Structure s = structureService.getStructureById(id);
+        StructureDTO dto = new StructureDTO();
+        dto.setIdStructure(s.getIdStructure());
+        dto.setNom(s.getNom());
+        dto.setLocalisation(s.getLocalisation());
+        dto.setTypeStructure(s.getTypeStructure());
+        if (s.getComptes() != null) dto.setCompteIds(s.getComptes().stream().map(Compte::getIdCompte).toList());
+        return ResponseEntity.ok(dto);
     }
 
     @PostMapping

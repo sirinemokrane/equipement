@@ -29,35 +29,66 @@ public class CableService {
     // Méthode pour ajouter un câble
     public void ajouterCable(Cable cable) {
         Objects.requireNonNull(cable, "Le câble ne peut pas être null");
-        Objects.requireNonNull(cable.getNumSerie(), "Le numéro de série ne peut pas être null");
-
-        // Valider que le numéro de série n'est pas vide
-        if (cable.getNumSerie().trim().isEmpty()) {
-            throw new RuntimeException("Le numéro de série ne peut pas être vide");
+        System.out.println("[DEBUG] ajouterCable called with serialNb='" + cable.getSerialNb() + "'");
+        // Allow serial number to be null or empty on creation.
+        // Normalize empty string to null so DB stores null instead of blank.
+        if (cable.getSerialNb() != null && cable.getSerialNb().trim().isEmpty()) {
+            cable.setSerialNb(null);
+        }
+        // Ensure DB non-null column 'etat' receives a value
+        if (cable.getState() == null) {
+            cable.setState("ko");
         }
 
         // Sauvegarder le câble dans la base de données
         cableRepository.save(cable);
     }
 
+    // Raw save without validation (used by controller for tolerant creation)
+    public Cable saveRaw(Cable cable) {
+        Objects.requireNonNull(cable, "Le câble ne peut pas être null");
+        if (cable.getSerialNb() != null && cable.getSerialNb().trim().isEmpty()) {
+            cable.setSerialNb(null);
+        }
+        if (cable.getState() == null) {
+            cable.setState("ko");
+        }
+        return cableRepository.save(cable);
+    }
+
     // Méthode pour modifier un câble
     public void modifierCable(Cable cable) {
         Objects.requireNonNull(cable, "Le câble ne peut pas être null");
         Objects.requireNonNull(cable.getIdCable(), "L'ID du câble ne peut pas être null");
-        Objects.requireNonNull(cable.getNumSerie(), "Le numéro de série ne peut pas être null");
 
-        // Vérifier que le câble existe
-        if (!cableRepository.existsById(cable.getIdCable())) {
-            throw new RuntimeException("Câble non trouvé avec l'ID: " + cable.getIdCable());
+        // Récupérer l'entité existante
+        Cable existing = cableRepository.findById(cable.getIdCable())
+                .orElseThrow(() -> new RuntimeException("Câble non trouvé avec l'ID: " + cable.getIdCable()));
+
+        // Merge: only update fields that are provided (non-null). For serialNb, treat blank as null.
+        if (cable.getSerialNb() != null) {
+            String s = cable.getSerialNb().trim();
+            existing.setSerialNb(s.isEmpty() ? null : s);
         }
+        if (cable.getType() != null) existing.setType(cable.getType());
+        if (cable.getChannelNb() != null) existing.setChannelNb(cable.getChannelNb());
+        if (cable.getLineName() != null) existing.setLineName(cable.getLineName());
+        if (cable.getPointNb() != null) existing.setPointNb(cable.getPointNb());
+        if (cable.getState() != null) existing.setState(cable.getState());
+        if (cable.getAutoTest() != null) existing.setAutoTest(cable.getAutoTest());
+        if (cable.getEasting() != null) existing.setEasting(cable.getEasting());
+        if (cable.getNorthing() != null) existing.setNorthing(cable.getNorthing());
+        if (cable.getElevation() != null) existing.setElevation(cable.getElevation());
+        if (cable.getNoise() != null) existing.setNoise(cable.getNoise());
+        if (cable.getDistortion() != null) existing.setDistortion(cable.getDistortion());
+        if (cable.getPhase() != null) existing.setPhase(cable.getPhase());
+        if (cable.getGain() != null) existing.setGain(cable.getGain());
+        if (cable.getVersion() != null) existing.setVersion(cable.getVersion());
+        if (cable.getLastTestDate() != null) existing.setLastTestDate(cable.getLastTestDate());
+        if (cable.getCxMaster() != null) existing.setCxMaster(cable.getCxMaster());
 
-        // Valider le numéro de série
-        if (cable.getNumSerie().trim().isEmpty()) {
-            throw new RuntimeException("Le numéro de série ne peut pas être vide");
-        }
-
-        // Sauvegarder les modifications
-        cableRepository.save(cable);
+        // Persist merged entity
+        cableRepository.save(existing);
     }
 
     // Méthode pour modifier un câble (ancienne version - gardée pour compatibilité)
@@ -75,8 +106,8 @@ public class CableService {
         }
 
         // Mettre à jour les propriétés du câble
-        cable.setNumSerie(nouveauNumSerie);
-        cable.setEtat(nouvelEtat);
+    cable.setSerialNb(nouveauNumSerie);
+    cable.setState(nouvelEtat ? "Ok" : "ko");
 
         // Sauvegarder les modifications
         cableRepository.save(cable);

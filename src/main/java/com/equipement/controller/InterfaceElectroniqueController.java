@@ -1,8 +1,9 @@
 package com.equipement.controller;
 
+import com.equipement.dto.InterfaceElectroniqueDTO;
 import com.equipement.entity.InterfaceElectronique;
 import com.equipement.services.InterfaceElectroniqueService;
-import com.equipement.dto.InterfaceElectroniqueDTO;
+import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,16 +18,33 @@ public class InterfaceElectroniqueController {
     private InterfaceElectroniqueService interfaceElectroniqueService;
 
     @GetMapping
-    public ResponseEntity<List<InterfaceElectronique>> getAllInterfaces() {
+    public ResponseEntity<List<InterfaceElectroniqueDTO>> getAllInterfaces() {
         List<InterfaceElectronique> interfaces = interfaceElectroniqueService.getAllInterfaces();
-        return ResponseEntity.ok(interfaces);
+        List<InterfaceElectroniqueDTO> dtos = interfaces.stream().map(i -> {
+            InterfaceElectroniqueDTO dto = new InterfaceElectroniqueDTO();
+            dto.setIdInterface(i.getIdInterface());
+            dto.setNom(i.getNom());
+            dto.setDateCreation(i.getDateCreation());
+            dto.setObservations(i.getObservations());
+            if (i.getCompte() != null) dto.setIdCompte(i.getCompte().getIdCompte());
+            if (i.getFichiers() != null) dto.setFichierIds(i.getFichiers().stream().map(f -> f.getIdFichier()).collect(Collectors.toList()));
+            return dto;
+        }).collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/{idInterface}")
-    public ResponseEntity<InterfaceElectronique> getInterfaceById(@PathVariable Long idInterface) {
+    public ResponseEntity<InterfaceElectroniqueDTO> getInterfaceById(@PathVariable Long idInterface) {
         try {
-            InterfaceElectronique interfaceElectronique = interfaceElectroniqueService.getInterfaceById(idInterface);
-            return ResponseEntity.ok(interfaceElectronique);
+            InterfaceElectronique i = interfaceElectroniqueService.getInterfaceById(idInterface);
+            InterfaceElectroniqueDTO dto = new InterfaceElectroniqueDTO();
+            dto.setIdInterface(i.getIdInterface());
+            dto.setNom(i.getNom());
+            dto.setDateCreation(i.getDateCreation());
+            dto.setObservations(i.getObservations());
+            if (i.getCompte() != null) dto.setIdCompte(i.getCompte().getIdCompte());
+            if (i.getFichiers() != null) dto.setFichierIds(i.getFichiers().stream().map(f -> f.getIdFichier()).collect(Collectors.toList()));
+            return ResponseEntity.ok(dto);
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }

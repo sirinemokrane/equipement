@@ -4,6 +4,9 @@ spring:
     username: admin
     password: TresFortMotDePasse123!
     driver-class-name: org.postgresql.Driver
+    batch:
+      job:
+        enabled: false
   jpa:
     hibernate:
       ddl-auto: update
@@ -14,4 +17,4 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
 server:
-  port: 9094
+  port: 9091
