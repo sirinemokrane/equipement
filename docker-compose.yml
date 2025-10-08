@@ -19,22 +19,7 @@ services:
       timeout: 5s
       retries: 5
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@exemple.com
-      PGADMIN_DEFAULT_PASSWORD: AdminPass123!
-    volumes:
-      - pgadmin_data:/var/lib/pgadmin
-    ports:
-      - "5050:80"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    networks:
-      - pgnetwork
+  # pgadmin service disabled (removed to avoid YAML validation error)
 
   adminer:
     image: adminer:latest
