@@ -4,3 +4,4 @@ public enum TypeCompte {
     GESTIONNAIRE,
     TECHNICIEN
 }
+

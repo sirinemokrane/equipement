@@ -18,6 +18,7 @@ import org.springframework.batch.item.file.transform.DelimitedLineTokenizer;
 import org.springframework.beans.factory.annotation.Autowired;  // AJOUTÉ : Pour injecter le listener
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.core.io.FileSystemResource;  // Utilisé par le listener
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -31,7 +32,12 @@ public class SpringBatchConfig {
     private final PlatformTransactionManager transactionManager;// Gère les transactions pour les opérations en base de données.
 
     @Autowired
+    @Lazy
     private DynamicReaderListener dynamicReaderListener;  // Injecté pour configurer dynamiquement le reader
+    @Bean
+    public DynamicReaderListener dynamicReaderListener() {
+        return new DynamicReaderListener();
+    }
 
     public SpringBatchConfig(JobRepository jobRepository,
                              PlatformTransactionManager transactionManager) {
